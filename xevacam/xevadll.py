@@ -9,7 +9,7 @@ import os
 import ctypes
 from ctypes import windll, cdll, CDLL, WINFUNCTYPE, CFUNCTYPE, \
                    c_void_p, c_int32, c_char_p, c_bool, c_ulong, \
-                   create_string_buffer, c_uint
+                   create_string_buffer, c_uint, c_double
 
 
 # Callback Function Type
@@ -33,23 +33,54 @@ def get_property_name(handle, idx):
     errCode = XDLL.get_property_name(handle, idx, name, 1024)
 
     if errCode:
-        raise Exception(error2str(errcode))
+        raise Exception(error2str(errCode))
 
     return name.value
 
 def get_property_info(handle, name):
+    value_resp = create_string_buffer(1024)
     range_resp = create_string_buffer(1024)
     unit_resp = create_string_buffer(1024)
     name = create_string_buffer(name)
 
-    errCode1 = XDLL.get_property_range(handle, name, range_resp, 1024)
-    errCode2 = XDLL.get_property_unit(handle, name, unit_resp, 1024)
+    errCode1 = XDLL.get_property_value(handle, name, value_resp, 1024)
+    errCode2 = XDLL.get_property_range(handle, name, range_resp, 1024)
+    errCode3 = XDLL.get_property_unit(handle, name, unit_resp, 1024)
 
-    for errCode in (errCode1, errCode2):
+    for errCode in (errCode1, errCode2, errCode3):
         if errCode:
-            raise Exception(error2str(errcode))
+            raise Exception(error2str(errCode))
 
-    return range_resp.value, unit_resp.value
+    return name.value, value_resp.value, range_resp.value, unit_resp.value
+
+
+def set_num_property(handle, name, value):
+    name = create_string_buffer(name)
+
+    # Last option is 'units', which seems irrelevant from the examples?
+    unit = create_string_buffer(0)
+
+    errCode = XDLL.set_property_value(handle, name, value, unit)
+
+    if errCode:
+        raise Exception(error2str(errCode))
+
+    return True
+
+
+def set_char_property(handle, name, value):
+    name = create_string_buffer(name)
+    value = create_string_buffer(value)
+
+    # Last option is 'units', which seems irrelevant from the examples?
+    unit = create_string_buffer(0)
+
+    errCode = XDLL.set_char_property_value(handle, name, value, unit)
+
+    if errCode:
+        raise Exception(error2str(errCode))
+
+    return True
 
 
 def print_error(errcode):
@@ -296,12 +327,22 @@ class XDLL(object):
     get_property_range.restype = c_ulong # ErrCode
     get_property_range.argtypes = (c_int32, c_char_p, c_char_p, c_uint)
 
+    # Property value getter
+    get_property_value = _xenethDLL.XC_GetPropertyValue
+    get_property_value.restype = c_ulong # ErrCode
+    get_property_value.argtypes = (c_int32, c_char_p, c_char_p, c_uint)
+
     # Property unit getter
     get_property_unit = _xenethDLL.XC_GetPropertyUnit
     get_property_unit.restype = c_ulong # ErrCode
     get_property_unit.argtypes = (c_int32, c_char_p, c_char_p, c_uint)
 
-    # FileAccessCorrectionFile
-    set_property_value = _xenethDLL.XC_SetPropertyValue
+    # Property setter
+    set_property_value = _xenethDLL.XC_SetPropertyValueF
     set_property_value.restype = c_ulong  # ErrCode
-    # set_property_value.argtypes = (c_int32, c_char_p, c_char_p, c_char_p)
+    set_property_value.argtypes = (c_int32, c_char_p, c_double, c_char_p)
+
+    # Property setter (characters)
+    set_char_property_value = _xenethDLL.XC_SetPropertyValue
+    set_char_property_value.restype = c_ulong  # ErrCode
+    set_char_property_value.argtypes = (c_int32, c_char_p, c_char_p, c_char_p)

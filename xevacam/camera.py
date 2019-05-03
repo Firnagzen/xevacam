@@ -18,6 +18,7 @@ from xevacam.utils import kbinterrupt_decorate
 '''
 class ExceptionThread(threading.Thread):
 
+
     def __init__(self, *args, **kwargs):
         super().__init__(self, *args, **kwargs)
         self.exc_queue = queue.Queue()
@@ -47,6 +48,7 @@ class XevaCam(object):
         self._record_time = 0  # Used for measuring the overall recording time
         self._times = []  # Used for saving time stamps for each frame
 
+
     @contextmanager
     def opened(self, camera_path='cam://0', sw_correction=True):
         '''
@@ -60,6 +62,7 @@ class XevaCam(object):
             yield self.open(camera_path, sw_correction)
         finally:
             self.close()
+
 
     def open(self, camera_path='cam://0', sw_correction=True):
         '''
@@ -92,6 +95,7 @@ class XevaCam(object):
                 raise Exception(msg)
         return self
 
+
     def close(self):
         '''
         Stops capturing, closes capture thread, closes connection.
@@ -119,6 +123,7 @@ class XevaCam(object):
                 print('Closing connection.')
                 xdll.XDLL.close_camera(self.handle)
 
+
     @property
     def enabled(self):
         '''
@@ -129,6 +134,7 @@ class XevaCam(object):
             val = self._enabled
         return val
 
+
     @enabled.setter
     def enabled(self, value):
         '''
@@ -138,8 +144,10 @@ class XevaCam(object):
         with self.enabled_lock:
             self._enabled = value
 
+
     def is_alive(self):
         return self._capture_thread.isAlive()
+
 
     def get_property_count(self):
         '''
@@ -148,19 +156,43 @@ class XevaCam(object):
         property_count = xdll.XDLL.get_property_count(self.handle)
         return property_count
 
+
     def get_property_name(self, idx):
         '''
         Asks the camera for the name of a given property from index
         '''
         return xdll.get_property_name(self.handle, idx).decode('utf-8')
 
-    def get_property_info(self, idx):
+
+    def get_property_info(self, idx = None, name = None):
         '''
-        Asks the camera for the valid range and units of a given property from idx
+        Asks the camera for the valid range and units of a given property
         '''
-        name = self.get_property_name(idx).encode('utf-8')
+        if not name:
+            name = self.get_property_name(idx)
+        name = name.encode('utf-8')
+
         info = xdll.get_property_info(self.handle, name)
+
         return tuple(i.decode('utf-8') for i in info)
+
+
+    def set_property(self, value, idx = None, name = None, propType = "num"):
+        '''
+        Sets numerical property
+        '''
+        if not name:
+            name = self.get_property_name(idx)
+        name = name.encode('utf-8')
+
+        if propType == "num":
+            xdll.set_num_property(self.handle, name, value)
+        else:
+            xdll.set_char_property(self.handle, name, value)
+
+        # Dump frame buffer
+        self.capture_single_frame()
+
 
     def get_frame_size(self):
         '''
@@ -170,6 +202,7 @@ class XevaCam(object):
         frame_size = xdll.XDLL.get_frame_size(self.handle)  # Size in bytes
         return frame_size
 
+
     def get_frame_dims(self):
         '''
         Returns frame dimensions in tuple(height, width).
@@ -177,8 +210,9 @@ class XevaCam(object):
         '''
         frame_width = xdll.XDLL.get_frame_width(self.handle)
         frame_height = xdll.XDLL.get_frame_height(self.handle)
-        print('width:', frame_width, 'height:', frame_height)
+        # print('width:', frame_width, 'height:', frame_height)
         return frame_height, frame_width
+
 
     def get_frame_type(self):
         '''
@@ -186,6 +220,7 @@ class XevaCam(object):
         @return: c_ulong
         '''
         return xdll.XDLL.get_frame_type(self.handle)
+
 
     def get_pixel_dtype(self):
         '''
@@ -202,6 +237,7 @@ class XevaCam(object):
             raise Exception('Unsupported pixel size %s' % str(bytes_in_pixel))
         return pixel_dtype
 
+
     def get_pixel_size(self):
         '''
         Returns a frame pixel's size in bytes.
@@ -209,6 +245,7 @@ class XevaCam(object):
         '''
         frame_t = xdll.XDLL.get_frame_type(self.handle)
         return xdll.XDLL.pixel_sizes[frame_t]
+
 
     def get_frame(self, buffer, frame_t, size, flag=0):
         '''
@@ -240,6 +277,7 @@ class XevaCam(object):
         # frame_buffer = np.reshape(frame_buffer, frame_dims)
         return error == xdll.XDLL.I_OK  # , frame_buffer
 
+
     def set_handler(self, handler, incl_ctrl_frames=False):
         '''
         Adds a new output to which frames are written.
@@ -249,6 +287,7 @@ class XevaCam(object):
         '''
         self.handlers.append((handler, incl_ctrl_frames))
 
+
     def clear_handlers(self):
         name = 'clear_handlers'
         if not self.is_alive():
@@ -256,6 +295,7 @@ class XevaCam(object):
             print(name, 'Cleared handlers')
         else:
             raise Exception('Can\'t clear handlers when thread is alive')
+
 
     def check_thread_exceptions(self):
         name = 'check_thread_exceptions'
@@ -329,6 +369,7 @@ class XevaCam(object):
                 ('description', 'Capture time = %d\nFrame time stamps = %s' % (self._record_time, str(self._times))))
         return meta
 
+
     def capture_frame_stream(self):
         '''
         Thread function for continuous camera capturing.
@@ -396,6 +437,7 @@ class XevaCam(object):
             print(name, '%s(%s): %s' % (type(e).__name__, str(e.errno), e.strerror))
         print(name, 'Thread closed')
 
+
     def capture_single_frame(self):
         '''
         TODO: Not tested
@@ -421,7 +463,7 @@ class XevaCam(object):
             dims = self.get_frame_dims()
             frame_t = self.get_frame_type()
             # pixel_size = self.get_pixel_size()
-            print(name, 'Size:', size, 'Dims:', dims, 'Frame type:', frame_t)
+            # print(name, 'Size:', size, 'Dims:', dims, 'Frame type:', frame_t)
             frame_buffer = bytes(size)
             while True:
                 ok = self.get_frame(frame_buffer,
@@ -437,12 +479,13 @@ class XevaCam(object):
                 #     print(name, 'Missed frame', i)
         else:
             raise Exception('Camera is not capturing.')
-        print(name, 'Finished')
+        # print(name, 'Finished')
         return frame, size, dims, frame_t
 
 
 """
 class XevaImage(object):
+
 
     def __init__(self, byte_stream, dims, dtype):
         import io
@@ -456,6 +499,7 @@ class XevaImage(object):
             yield self
         finally:
             pass
+
 
     def read_numpy_array(self, target_order=None):
         ''' Reads BytesIO stream Numpy 3D ndarray '''
