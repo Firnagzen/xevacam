@@ -104,12 +104,16 @@ class XevaCam(object):
                     xdll.print_error(error)
                     raise Exception('Could not stop capturing')
                 self.enabled = False
-                self._capture_thread.join(1)
+
                 if self._capture_thread.isAlive():
-                    raise Exception('Thread didn\'t stop.')
+                    self._capture_thread.join(1)
+                    if self._capture_thread.isAlive():
+                        raise Exception('Thread didn\'t stop.')
+
         except:
             print('Something went wrong closing the camera.')
             raise
+            
         finally:
             if xdll.XDLL.is_initialised(self.handle):
                 print('Closing connection.')
