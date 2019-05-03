@@ -406,7 +406,7 @@ class XevaCam(object):
                 ok = self.get_frame(frame_buffer,
                                     frame_t=frame_t,
                                     size=size,
-                                    dims=dims,
+                                    # dims=dims,
                                     flag=0)  # Non-blocking
                 # xdll.XGF_Blocking
                 if ok:
