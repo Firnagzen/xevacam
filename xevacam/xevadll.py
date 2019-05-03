@@ -28,6 +28,29 @@ def error2str(errcode):
                                                           str(size),
                                                           repr(s.value))
 
+def get_property_name(handle, idx):
+    name = create_string_buffer(1024)
+    errCode = XDLL.get_property_name(handle, idx, name, 1024)
+
+    if errCode:
+        raise Exception(error2str(errcode))
+
+    return name.value
+
+def get_property_info(handle, name):
+    range_resp = create_string_buffer(1024)
+    unit_resp = create_string_buffer(1024)
+    name = create_string_buffer(name)
+
+    errCode1 = XDLL.get_property_range(handle, name, range_resp, 1024)
+    errCode2 = XDLL.get_property_unit(handle, name, unit_resp, 1024)
+
+    for errCode in (errCode1, errCode2):
+        if errCode:
+            raise Exception(error2str(errcode))
+
+    return range_resp.value, unit_resp.value
+
 
 def print_error(errcode):
     print(error2str(errcode))
@@ -257,6 +280,26 @@ class XDLL(object):
     load_settings = _xenethDLL.XC_LoadSettings
     load_settings.restype = c_ulong
     load_settings.argtypes = (c_char_p, c_ulong)
+
+    # Property count getter
+    get_property_count = _xenethDLL.XC_GetPropertyCount
+    get_property_count.restype = c_ulong # ErrCode
+    get_property_count.argtypes = (c_int32,)
+
+    # Property name getter
+    get_property_name = _xenethDLL.XC_GetPropertyName
+    get_property_name.restype = c_ulong # ErrCode
+    get_property_name.argtypes = (c_int32, c_uint, c_char_p, c_uint)
+
+    # Property range getter
+    get_property_range = _xenethDLL.XC_GetPropertyRange
+    get_property_range.restype = c_ulong # ErrCode
+    get_property_range.argtypes = (c_int32, c_char_p, c_char_p, c_uint)
+
+    # Property unit getter
+    get_property_unit = _xenethDLL.XC_GetPropertyUnit
+    get_property_unit.restype = c_ulong # ErrCode
+    get_property_unit.argtypes = (c_int32, c_char_p, c_char_p, c_uint)
 
     # FileAccessCorrectionFile
     set_property_value = _xenethDLL.XC_SetPropertyValue

@@ -113,7 +113,7 @@ class XevaCam(object):
         except:
             print('Something went wrong closing the camera.')
             raise
-            
+
         finally:
             if xdll.XDLL.is_initialised(self.handle):
                 print('Closing connection.')
@@ -140,6 +140,27 @@ class XevaCam(object):
 
     def is_alive(self):
         return self._capture_thread.isAlive()
+
+    def get_property_count(self):
+        '''
+        Asks the camera how many properties there are.
+        '''
+        property_count = xdll.XDLL.get_property_count(self.handle)
+        return property_count
+
+    def get_property_name(self, idx):
+        '''
+        Asks the camera for the name of a given property from index
+        '''
+        return xdll.get_property_name(self.handle, idx).decode('utf-8')
+
+    def get_property_info(self, idx):
+        '''
+        Asks the camera for the valid range and units of a given property from idx
+        '''
+        name = self.get_property_name(idx).encode('utf-8')
+        info = xdll.get_property_info(self.handle, name)
+        return tuple(i.decode('utf-8') for i in info)
 
     def get_frame_size(self):
         '''
