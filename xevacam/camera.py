@@ -194,6 +194,15 @@ class XevaCam(object):
         self.capture_single_frame()
 
 
+    def get_frame_parameters(self):
+        return {
+            "size" : self.get_frame_size(),
+            "dims" : self.get_frame_dims(),
+            "pixel": self.get_pixel_size(),
+            "dtype": self.get_pixel_dtype()
+        }
+
+
     def get_frame_size(self):
         '''
         Asks the camera what is the frame size in bytes.
@@ -438,17 +447,19 @@ class XevaCam(object):
         print(name, 'Thread closed')
 
 
-    def capture_single_frame(self):
+    def capture_single_frame(self, dump_buffer = False):
         '''
-        TODO: Not tested
+        Captures a single frame
         '''
         name = 'capture_single_frame'
         frame = None
         error = xdll.XDLL.start_capture(self.handle)
+
         if error != xdll.XDLL.I_OK:
             xdll.print_error(error)
             raise Exception(
                 '%s Starting capture failed! %s' % (name, xdll.error2str(error)))
+
         if xdll.XDLL.is_capturing(self.handle) == 0:
             for i in range(5):
                 if xdll.XDLL.is_capturing(self.handle) == 0:
@@ -456,31 +467,36 @@ class XevaCam(object):
                     time.sleep(0.1)
                 else:
                     break
+
         if xdll.XDLL.is_capturing(self.handle) == 0:
             raise Exception('Camera is not capturing.')
+
         elif xdll.XDLL.is_capturing(self.handle):
             size = self.get_frame_size()
             dims = self.get_frame_dims()
             frame_t = self.get_frame_type()
-            # pixel_size = self.get_pixel_size()
-            # print(name, 'Size:', size, 'Dims:', dims, 'Frame type:', frame_t)
             frame_buffer = bytes(size)
-            while True:
-                ok = self.get_frame(frame_buffer,
-                                    frame_t=frame_t,
-                                    size=size,
-                                    # dims=dims,
-                                    flag=0)  # Non-blocking
-                # xdll.XGF_Blocking
-                if ok:
-                    frame = frame_buffer
-                    break
-                # else:
-                #     print(name, 'Missed frame', i)
+
+            if dump_buffer:
+                ok = self.get_frame(
+                    frame_buffer,
+                    frame_t = frame_t,
+                    size = size,
+                    flag = xdll.XDLL.XGF_Blocking
+                )
+                frame_buffer = bytes(size)
+
+            ok = self.get_frame(
+                frame_buffer,
+                frame_t = frame_t,
+                size = size,
+                flag = xdll.XDLL.XGF_Blocking
+            )
+
         else:
             raise Exception('Camera is not capturing.')
-        # print(name, 'Finished')
-        return frame, size, dims, frame_t
+
+        return frame_buffer, size, dims, frame_t
 
 
 """
