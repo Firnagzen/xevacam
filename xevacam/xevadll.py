@@ -4,8 +4,8 @@ Created on 16.11.2016
 @author: Samuli Rahkonen
 '''
 
-import os
-import sys
+from sys import platform as sys_plat
+import os, sys
 import ctypes
 from ctypes import windll, cdll, CDLL, WINFUNCTYPE, CFUNCTYPE, \
                    c_void_p, c_int32, c_char_p, c_bool, c_ulong, \
@@ -54,13 +54,16 @@ def get_property_info(handle, name):
     return name.value, value_resp.value, range_resp.value, unit_resp.value
 
 
-def set_num_property(handle, name, value):
+def set_num_property(handle, name, value, boolean = False):
     name = create_string_buffer(name)
 
     # Last option is 'units', which seems irrelevant from the examples?
     unit = create_string_buffer(0)
 
-    errCode = XDLL.set_property_value(handle, name, value, unit)
+    if boolean:
+        errCode = XDLL.set_bool_property_value(handle, name, value, unit)
+    else:
+        errCode = XDLL.set_property_value(handle, name, value, unit)
 
     if errCode:
         raise Exception(error2str(errCode))
@@ -138,25 +141,20 @@ LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000
 class XDLL(object):
     ''' Talks to xeneth64.dll '''
 
+    # ctypes.WinDLL('kernel32')
+    # directory = 'C:\\MyTemp\\envs\\xevacam\\Lib\\site-packages\\'
     directory = r'C:\Program Files\Common Files\XenICs\Runtime'
+    # directory = ''
+    # print(xenethC_path)
+    # os.chdir(directory)
+    # _xenethDLL = windll.LoadLibrary(os.path.join(directory, 'xeneth64.dll'))
 
-    @classmethod
-    def xenethDLL(cls):
-        try:
-            return cls._xenethDLL
-        except AttributeError:
-            # Check if system is 32 or 64 bit
-            if sys.maxsize > 2**32:
-                dllName = 'xeneth64.dll'
-            else:
-                dllName = 'xeneth.dll'
-
-            # Memoize path
-            cls._xenethDLL = WinDLLEx(
-                os.path.join(directory, 'xeneth64.dll'),
-                LOAD_WITH_ALTERED_SEARCH_PATH
-            )
-            return cls._xenethDLL
+    if sys.maxsize > 2**32:
+        dllName = "xeneth64.dll"
+    else:
+        dllName = "xeneth.dll"
+    _xenethDLL = WinDLLEx(os.path.join(directory, dllName),
+                          LOAD_WITH_ALTERED_SEARCH_PATH)
 
     # C Enumerations
 
@@ -258,101 +256,106 @@ class XDLL(object):
 
     # XCHANDLE XC_OpenCamera (const char * pCameraName = "cam://default",
     #                         XStatus pCallBack = 0, void * pUser = 0);
-    open_camera = XDLL.xenethDLL().XC_OpenCamera
+    open_camera = _xenethDLL.XC_OpenCamera
     open_camera.restype = c_int32  # XCHANDLE
     # open_camera.argtypes = (c_char_p,)
     # open_camera.argtypes = (c_char_p, CB_FUNCTYPE(None), c_void_p)
 
-    error_to_string = XDLL.xenethDLL().XC_ErrorToString
+    error_to_string = _xenethDLL.XC_ErrorToString
     error_to_string.restype = c_int32
     error_to_string.argtypes = (c_int32, c_char_p, c_int32)
 
-    is_initialised = XDLL.xenethDLL().XC_IsInitialised
+    is_initialised = _xenethDLL.XC_IsInitialised
     is_initialised.restype = c_int32
     is_initialised.argtypes = (c_int32,)
 
-    start_capture = XDLL.xenethDLL().XC_StartCapture
+    start_capture = _xenethDLL.XC_StartCapture
     start_capture.restype = c_ulong  # ErrCode
     start_capture.argtypes = (c_int32,)
 
-    is_capturing = XDLL.xenethDLL().XC_IsCapturing
+    is_capturing = _xenethDLL.XC_IsCapturing
     is_capturing.restype = c_bool
     is_capturing.argtypes = (c_int32,)
 
-    get_frame_size = XDLL.xenethDLL().XC_GetFrameSize
+    get_frame_size = _xenethDLL.XC_GetFrameSize
     get_frame_size.restype = c_ulong
     get_frame_size.argtypes = (c_int32,)  # Handle
 
-    get_frame_type = XDLL.xenethDLL().XC_GetFrameType
+    get_frame_type = _xenethDLL.XC_GetFrameType
     get_frame_type.restype = c_ulong  # Returns enum
     get_frame_type.argtypes = (c_int32,)  # Handle
 
-    get_frame_width = XDLL.xenethDLL().XC_GetWidth
+    get_frame_width = _xenethDLL.XC_GetWidth
     get_frame_width.restype = c_ulong
     get_frame_width.argtypes = (c_int32,)  # Handle
 
-    get_frame_height = XDLL.xenethDLL().XC_GetHeight
+    get_frame_height = _xenethDLL.XC_GetHeight
     get_frame_height.restype = c_ulong
     get_frame_height.argtypes = (c_int32,)  # Handle
 
-    get_frame = XDLL.xenethDLL().XC_GetFrame
+    get_frame = _xenethDLL.XC_GetFrame
     get_frame.restype = c_ulong  # ErrCode
     get_frame.argtypes = (c_int32, c_ulong, c_ulong, c_void_p, c_uint)
 
-    stop_capture = XDLL.xenethDLL().XC_StopCapture
+    stop_capture = _xenethDLL.XC_StopCapture
     stop_capture.restype = c_ulong  # ErrCode
     stop_capture.argtypes = (c_int32,)
 
-    close_camera = XDLL.xenethDLL().XC_CloseCamera
+    close_camera = _xenethDLL.XC_CloseCamera
     # Returns void
     close_camera.argtypes = (c_int32,)  # Handle
 
     # Calibration
-    load_calibration = XDLL.xenethDLL().XC_LoadCalibration
+    load_calibration = _xenethDLL.XC_LoadCalibration
     load_calibration.restype = c_ulong  # ErrCode
     # load_calibration.argtypes = (c_int32, c_char_p, c_ulong)
 
     # ColourProfile
-    load_colour_profile = XDLL.xenethDLL().XC_LoadColourProfile
+    load_colour_profile = _xenethDLL.XC_LoadColourProfile
     load_colour_profile.restype = c_ulong
     load_colour_profile.argtypes = (c_char_p,)
 
     # Settings
-    load_settings = XDLL.xenethDLL().XC_LoadSettings
+    load_settings = _xenethDLL.XC_LoadSettings
     load_settings.restype = c_ulong
     load_settings.argtypes = (c_char_p, c_ulong)
 
     # Property count getter
-    get_property_count = XDLL.xenethDLL().XC_GetPropertyCount
+    get_property_count = _xenethDLL.XC_GetPropertyCount
     get_property_count.restype = c_ulong # ErrCode
     get_property_count.argtypes = (c_int32,)
 
     # Property name getter
-    get_property_name = XDLL.xenethDLL().XC_GetPropertyName
+    get_property_name = _xenethDLL.XC_GetPropertyName
     get_property_name.restype = c_ulong # ErrCode
     get_property_name.argtypes = (c_int32, c_uint, c_char_p, c_uint)
 
     # Property range getter
-    get_property_range = XDLL.xenethDLL().XC_GetPropertyRange
+    get_property_range = _xenethDLL.XC_GetPropertyRange
     get_property_range.restype = c_ulong # ErrCode
     get_property_range.argtypes = (c_int32, c_char_p, c_char_p, c_uint)
 
     # Property value getter
-    get_property_value = XDLL.xenethDLL().XC_GetPropertyValue
+    get_property_value = _xenethDLL.XC_GetPropertyValue
     get_property_value.restype = c_ulong # ErrCode
     get_property_value.argtypes = (c_int32, c_char_p, c_char_p, c_uint)
 
     # Property unit getter
-    get_property_unit = XDLL.xenethDLL().XC_GetPropertyUnit
+    get_property_unit = _xenethDLL.XC_GetPropertyUnit
     get_property_unit.restype = c_ulong # ErrCode
     get_property_unit.argtypes = (c_int32, c_char_p, c_char_p, c_uint)
 
     # Property setter
-    set_property_value = XDLL.xenethDLL().XC_SetPropertyValueF
+    set_property_value = _xenethDLL.XC_SetPropertyValueF
     set_property_value.restype = c_ulong  # ErrCode
     set_property_value.argtypes = (c_int32, c_char_p, c_double, c_char_p)
 
+    # Property setter (bool)
+    set_bool_property_value = _xenethDLL.XC_SetPropertyValueL
+    set_bool_property_value.restype = c_ulong  # ErrCode
+    set_bool_property_value.argtypes = (c_int32, c_char_p, c_bool, c_char_p)
+
     # Property setter (characters)
-    set_char_property_value = XDLL.xenethDLL().XC_SetPropertyValue
+    set_char_property_value = _xenethDLL.XC_SetPropertyValue
     set_char_property_value.restype = c_ulong  # ErrCode
     set_char_property_value.argtypes = (c_int32, c_char_p, c_char_p, c_char_p)

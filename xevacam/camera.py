@@ -187,6 +187,8 @@ class XevaCam(object):
 
         if propType == "num":
             xdll.set_num_property(self.handle, name, value)
+        elif propType == "bool":
+            xdll.set_num_property(self.handle, name, value, boolean = True)
         else:
             xdll.set_char_property(self.handle, name, value)
 
